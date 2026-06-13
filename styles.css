@@ -286,6 +286,45 @@ body[data-theme="dark"] .ic-moon { display: block; }
 @keyframes cardIn { to { opacity: 1; transform: none; } }
 @keyframes shimmer { to { background-position: -200% 0; } }
 
+/* ===================== NOTES ===================== */
+.notes {
+  max-width: var(--readw); margin: clamp(22px, 4vw, 36px) auto 0;
+  background: linear-gradient(var(--paper), var(--paper-2));
+  border: 1px solid var(--rule); border-radius: var(--r);
+  box-shadow: var(--shadow); padding: 18px 20px 20px;
+  position: relative; overflow: hidden;
+}
+.notes::before {
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+  background: linear-gradient(var(--oxblood), color-mix(in srgb,var(--oxblood) 60%, var(--gold)));
+  opacity: .5;
+}
+.notes__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.notes__title {
+  display: flex; align-items: center; gap: 9px; margin: 0;
+  font-family: var(--ff-display); font-weight: 600; font-size: 1.32rem; color: var(--ink);
+}
+.notes__title svg { color: var(--gold); }
+.notes__status { font-size: .76rem; letter-spacing: .04em; color: var(--ink-faint); transition: opacity .3s; min-height: 1em; }
+.notes__status.is-saved { color: #2f8f5b; }
+body[data-theme="dark"] .notes__status.is-saved { color: #6cc795; }
+.notes__area {
+  width: 100%; resize: vertical; min-height: 96px;
+  font-family: var(--ff-body); font-size: 1.02rem; line-height: 1.66; color: var(--ink);
+  background: color-mix(in srgb, var(--bg) 55%, transparent);
+  border: 1px solid var(--rule-soft); border-radius: 10px; padding: 13px 15px;
+  transition: border-color .2s, box-shadow .2s;
+}
+.notes__area::placeholder { color: var(--ink-faint); font-style: italic; }
+.notes__area:focus-visible {
+  outline: none; border-color: color-mix(in srgb,var(--gold) 55%, var(--rule));
+  box-shadow: 0 0 0 3px color-mix(in srgb,var(--gold) 16%, transparent);
+}
+
+/* TOC: marker for events that have a note */
+.toc-item__note { width: 6px; height: 6px; border-radius: 50%; background: var(--oxblood); flex: none; opacity: 0; transition: opacity .2s; }
+.toc-item.is-noted .toc-item__note { opacity: .85; }
+
 .status { max-width: var(--readw); margin: 18px auto 0; font-size: .86rem; font-style: italic; color: var(--ink-faint); text-align: center; min-height: 1.2em; }
 .status.error { color: var(--oxblood); font-style: normal; }
 

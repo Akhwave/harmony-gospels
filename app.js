@@ -14,6 +14,7 @@ const els = {
   jumpForm: $("jumpForm"), jumpInput: $("jumpInput"),
   openOnline: $("openOnlineBtn"),
   readToggle: $("readToggle"),
+  noteArea: $("noteArea"), notesStatus: $("notesStatus"),
   progressFill: $("progressFill"), footProgress: $("footProgress"),
   themeBtn: $("themeBtn"),
   tocBtn: $("tocBtn"), drawer: $("drawer"), drawerClose: $("drawerClose"),
@@ -32,6 +33,7 @@ const els = {
 const LS = {
   index: "hog:index", version: "hog:version",
   completed: "hog:completed", theme: "hog:theme", updated: "hog:updated",
+  notes: "hog:notes",
 };
 const TOTAL = readingPlan.length;
 
@@ -39,6 +41,7 @@ const state = {
   index: clampIndex(parseInt(localStorage.getItem(LS.index) ?? "0", 10) || 0),
   version: localStorage.getItem(LS.version) || "kjv",
   completed: new Set(JSON.parse(localStorage.getItem(LS.completed) || "[]")),
+  notes: JSON.parse(localStorage.getItem(LS.notes) || "{}"),
   updated: parseInt(localStorage.getItem(LS.updated) ?? "0", 10) || 0,
 };
 
@@ -56,6 +59,7 @@ function saveLocal(touch = true) {
   localStorage.setItem(LS.index, String(state.index));
   localStorage.setItem(LS.version, state.version);
   localStorage.setItem(LS.completed, JSON.stringify([...state.completed]));
+  localStorage.setItem(LS.notes, JSON.stringify(state.notes));
   localStorage.setItem(LS.updated, String(state.updated));
   if (touch) schedulePush();
 }
@@ -97,6 +101,10 @@ function renderMeta() {
   const isRead = state.completed.has(item.id);
   els.readToggle.setAttribute("aria-pressed", String(isRead));
   els.readToggle.querySelector(".readtoggle__label").textContent = isRead ? "Read" : "Mark as read";
+
+  // load this event's note (without firing the input/save handler)
+  els.noteArea.value = state.notes[item.id] || "";
+  els.notesStatus.textContent = ""; els.notesStatus.classList.remove("is-saved");
 
   renderProgress();
   document.title = `${state.index + 1}. ${item.label} · Harmony of the Gospels`;
@@ -235,6 +243,22 @@ els.readToggle.addEventListener("click", () => {
   updateTocItem(id);
 });
 
+/* notes — debounced auto-save */
+let noteT;
+els.noteArea.addEventListener("input", () => {
+  const id = current().id;
+  els.notesStatus.textContent = "Saving…"; els.notesStatus.classList.remove("is-saved");
+  clearTimeout(noteT);
+  noteT = setTimeout(() => {
+    const text = els.noteArea.value;
+    if (text.trim()) state.notes[id] = text;
+    else delete state.notes[id];
+    saveLocal();
+    els.notesStatus.textContent = "Saved"; els.notesStatus.classList.add("is-saved");
+    updateTocItem(id);
+  }, 600);
+});
+
 /* keyboard */
 document.addEventListener("keydown", (e) => {
   if (/input|select|textarea/i.test(e.target.tagName)) return;
@@ -253,6 +277,7 @@ function buildToc() {
     html += `<button class="toc-item" data-i="${i}" data-id="${item.id}">
       <span class="toc-item__n">${i + 1}</span>
       <span class="toc-item__label">${escapeHtml(item.label)}</span>
+      <span class="toc-item__note" aria-hidden="true" title="Has a note"></span>
       <span class="toc-item__dot" aria-hidden="true"></span>
     </button>`;
   });
@@ -265,15 +290,19 @@ function buildToc() {
 function highlightToc() {
   els.tocList.querySelectorAll(".toc-item").forEach((btn) => {
     const i = parseInt(btn.dataset.i, 10);
+    const id = parseInt(btn.dataset.id, 10);
     btn.classList.toggle("is-current", i === state.index);
-    btn.classList.toggle("is-read", state.completed.has(parseInt(btn.dataset.id, 10)));
+    btn.classList.toggle("is-read", state.completed.has(id));
+    btn.classList.toggle("is-noted", !!(state.notes[id] && state.notes[id].trim()));
   });
   const cur = els.tocList.querySelector(".toc-item.is-current");
   if (cur) cur.scrollIntoView({ block: "center" });
 }
 function updateTocItem(id) {
   const btn = els.tocList.querySelector(`.toc-item[data-id="${id}"]`);
-  if (btn) btn.classList.toggle("is-read", state.completed.has(id));
+  if (!btn) return;
+  btn.classList.toggle("is-read", state.completed.has(id));
+  btn.classList.toggle("is-noted", !!(state.notes[id] && state.notes[id].trim()));
 }
 els.tocSearch.addEventListener("input", () => {
   const q = els.tocSearch.value.trim().toLowerCase();
@@ -328,28 +357,40 @@ async function pushCloud() {
   try {
     await fb.setDoc(fb.ref(fb.db, "progress", user.uid), {
       index: state.index, version: state.version,
-      completed: [...state.completed], updated: state.updated,
+      completed: [...state.completed], notes: state.notes, updated: state.updated,
     }, { merge: true });
   } catch (e) { console.warn("push failed", e); }
 }
 function mergeRemote(data) {
   if (!data) return;
-  let changed = false, localChanged = false;
+  let changed = false, localChanged = false, notesChanged = false;
+  const remoteNewer = (data.updated || 0) > state.updated;
+
   // union completed (never lose a read mark)
   const before = state.completed.size;
   (data.completed || []).forEach((id) => state.completed.add(id));
-  if (state.completed.size !== before) changed = true;
+  if (state.completed.size !== before) { changed = true; if (!remoteNewer) localChanged = true; }
+
+  // merge notes: newer side wins on conflicts, keep both sides' unique keys
+  if (data.notes && typeof data.notes === "object") {
+    const merged = remoteNewer ? { ...state.notes, ...data.notes } : { ...data.notes, ...state.notes };
+    if (JSON.stringify(merged) !== JSON.stringify(state.notes)) { state.notes = merged; notesChanged = true; changed = true; }
+    if (!remoteNewer && JSON.stringify(merged) !== JSON.stringify(data.notes)) localChanged = true;
+  }
+
   // newest writer wins for place + version
-  if ((data.updated || 0) > state.updated) {
+  if (remoteNewer) {
     if (typeof data.index === "number" && data.index !== state.index) { state.index = clampIndex(data.index); changed = true; }
     if (data.version && data.version !== state.version) { state.version = data.version; changed = true; }
     state.updated = data.updated;
-  } else if (state.completed.size !== before) {
-    localChanged = true; // we added marks the remote didn't have
   }
-  if (changed) {
-    saveLocal(false);
-    renderMeta(); loadPassages(); highlightToc();
+
+  if (changed) saveLocal(false);
+  if (remoteNewer) { renderMeta(); loadPassages(); highlightToc(); }
+  else if (notesChanged) {
+    // refresh current note (unless user is mid-edit) + TOC markers
+    if (document.activeElement !== els.noteArea) els.noteArea.value = state.notes[current().id] || "";
+    highlightToc();
   }
   if (localChanged) schedulePush();
 }

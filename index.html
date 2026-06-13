@@ -44,7 +44,11 @@
           <option value="webbe">WEB British (WEBBE)</option>
           <option value="asv">American Standard (ASV)</option>
           <option value="bbe">Basic English (BBE)</option>
-          <option value="oeb-cw">Open English (OEB-CW)</option>
+          <option value="dra">Douay-Rheims (DRA)</option>
+          <option value="darby">Darby Bible</option>
+          <option value="ylt">Young's Literal (YLT)</option>
+          <option value="oeb-us">Open English US (OEB)</option>
+          <option value="oeb-cw">Open English CW (OEB)</option>
         </select>
       </label>
 
@@ -97,6 +101,19 @@
     </section>
 
     <div class="passages" id="passages"></div>
+
+    <section class="notes" id="notes">
+      <div class="notes__head">
+        <h2 class="notes__title">
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+          My notes
+        </h2>
+        <span class="notes__status" id="notesStatus" aria-live="polite"></span>
+      </div>
+      <textarea id="noteArea" class="notes__area" rows="4"
+        placeholder="Write a reflection, prayer, question, or cross-reference for this event&#8230;"
+        aria-label="Notes for this event"></textarea>
+    </section>
 
     <p class="status" id="status" role="status"></p>
 
