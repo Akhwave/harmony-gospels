@@ -2,7 +2,7 @@
 
 A beautiful, installable reader that walks through **211 events in the life of Christ**, showing all the parallel Matthew / Mark / Luke / John passages side by side. Switch translations, mark events as read, and pick up exactly where you left off — on any device.
 
-- **Live site:** _(added after deploy)_
+- **Live site:** <https://akhwave.github.io/harmony-gospels/>
 - Scripture text fetched live from [bible-api.com](https://bible-api.com); already-read passages are cached for offline use.
 
 ## Features
