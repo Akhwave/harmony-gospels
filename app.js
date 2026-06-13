@@ -13,7 +13,7 @@ const els = {
   prev: $("prevBtn"), next: $("nextBtn"),
   jumpForm: $("jumpForm"), jumpInput: $("jumpInput"),
   openOnline: $("openOnlineBtn"),
-  readToggle: $("readToggle"),
+  readToggles: Array.from(document.querySelectorAll(".js-readtoggle")),
   noteArea: $("noteArea"), notesStatus: $("notesStatus"),
   progressFill: $("progressFill"), footProgress: $("footProgress"),
   themeBtn: $("themeBtn"),
@@ -102,8 +102,10 @@ function renderMeta() {
   els.version.value = state.version;
 
   const isRead = state.completed.has(item.id);
-  els.readToggle.setAttribute("aria-pressed", String(isRead));
-  els.readToggle.querySelector(".readtoggle__label").textContent = isRead ? "Read" : "Mark as read";
+  els.readToggles.forEach((b) => {
+    b.setAttribute("aria-pressed", String(isRead));
+    b.querySelector(".readtoggle__label").textContent = isRead ? "Read" : "Mark as read";
+  });
 
   // load this event's note (skip if user is mid-edit so we don't clobber typing)
   if (document.activeElement !== els.noteArea) els.noteArea.value = state.notes[item.id] || "";
@@ -247,14 +249,15 @@ els.version.addEventListener("change", () => { state.version = els.version.value
 els.openOnline.addEventListener("click", () => {
   window.open(`https://www.biblegateway.com/passage/?search=${encodeURIComponent(current().ref)}`, "_blank", "noopener");
 });
-els.readToggle.addEventListener("click", () => {
+function toggleRead() {
   const id = current().id;
   if (state.completed.has(id)) state.completed.delete(id);
   else { state.completed.add(id); toast("Marked as read"); }
   saveLocal();
   renderMeta();
   updateTocItem(id);
-});
+}
+els.readToggles.forEach((b) => b.addEventListener("click", toggleRead));
 
 /* notes — debounced auto-save */
 let noteT;
@@ -277,7 +280,7 @@ document.addEventListener("keydown", (e) => {
   if (/input|select|textarea/i.test(e.target.tagName)) return;
   if (e.key === "ArrowRight") { els.next.click(); }
   else if (e.key === "ArrowLeft") { els.prev.click(); }
-  else if (e.key === "m" || e.key === "M") { els.readToggle.click(); }
+  else if (e.key === "m" || e.key === "M") { toggleRead(); }
 });
 
 /* ============================================================

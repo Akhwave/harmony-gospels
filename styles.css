@@ -338,6 +338,10 @@ body[data-theme="dark"] .notes__status.is-saved { color: #6cc795; }
 .status { max-width: var(--readw); margin: 18px auto 0; font-size: .86rem; font-style: italic; color: var(--ink-faint); text-align: center; min-height: 1.2em; }
 .status.error { color: var(--oxblood); font-style: normal; }
 
+/* bottom "mark as read" */
+.readtoggle-bar { display: flex; justify-content: center; max-width: var(--readw); margin: clamp(22px, 4vw, 32px) auto 0; }
+.readtoggle--lg { padding: 10px 22px 10px 11px; font-size: .96rem; }
+
 /* ===================== CONTROLS ===================== */
 .controls {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
