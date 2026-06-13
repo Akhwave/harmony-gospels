@@ -55,7 +55,10 @@ function current() { return readingPlan[state.index]; }
 })();
 
 function saveLocal(touch = true) {
-  if (touch) state.updated = Date.now();
+  // Monotonic clock: always greater than any value we've seen (local OR adopted
+  // from another device), so a fresh local edit reliably wins last-writer-wins
+  // even if the two devices' wall clocks differ slightly.
+  if (touch) state.updated = Math.max(Date.now(), (state.updated || 0) + 1);
   localStorage.setItem(LS.index, String(state.index));
   localStorage.setItem(LS.version, state.version);
   localStorage.setItem(LS.completed, JSON.stringify([...state.completed]));
@@ -102,8 +105,8 @@ function renderMeta() {
   els.readToggle.setAttribute("aria-pressed", String(isRead));
   els.readToggle.querySelector(".readtoggle__label").textContent = isRead ? "Read" : "Mark as read";
 
-  // load this event's note (without firing the input/save handler)
-  els.noteArea.value = state.notes[item.id] || "";
+  // load this event's note (skip if user is mid-edit so we don't clobber typing)
+  if (document.activeElement !== els.noteArea) els.noteArea.value = state.notes[item.id] || "";
   els.notesStatus.textContent = ""; els.notesStatus.classList.remove("is-saved");
 
   renderProgress();
@@ -363,36 +366,22 @@ async function pushCloud() {
 }
 function mergeRemote(data) {
   if (!data) return;
-  let changed = false, localChanged = false, notesChanged = false;
-  const remoteNewer = (data.updated || 0) > state.updated;
+  // Last-writer-wins: only adopt the remote state if it was saved more
+  // recently than ours. This lets un-marking a read event (and deleting a
+  // note) propagate, instead of being resurrected by a union merge.
+  if ((data.updated || 0) <= (state.updated || 0)) return;
 
-  // union completed (never lose a read mark)
-  const before = state.completed.size;
-  (data.completed || []).forEach((id) => state.completed.add(id));
-  if (state.completed.size !== before) { changed = true; if (!remoteNewer) localChanged = true; }
+  const prevIndex = state.index, prevVersion = state.version;
+  state.completed = new Set(Array.isArray(data.completed) ? data.completed : []);
+  state.notes = (data.notes && typeof data.notes === "object") ? { ...data.notes } : {};
+  if (typeof data.index === "number") state.index = clampIndex(data.index);
+  if (data.version) state.version = data.version;
+  state.updated = data.updated;
 
-  // merge notes: newer side wins on conflicts, keep both sides' unique keys
-  if (data.notes && typeof data.notes === "object") {
-    const merged = remoteNewer ? { ...state.notes, ...data.notes } : { ...data.notes, ...state.notes };
-    if (JSON.stringify(merged) !== JSON.stringify(state.notes)) { state.notes = merged; notesChanged = true; changed = true; }
-    if (!remoteNewer && JSON.stringify(merged) !== JSON.stringify(data.notes)) localChanged = true;
-  }
-
-  // newest writer wins for place + version
-  if (remoteNewer) {
-    if (typeof data.index === "number" && data.index !== state.index) { state.index = clampIndex(data.index); changed = true; }
-    if (data.version && data.version !== state.version) { state.version = data.version; changed = true; }
-    state.updated = data.updated;
-  }
-
-  if (changed) saveLocal(false);
-  if (remoteNewer) { renderMeta(); loadPassages(); highlightToc(); }
-  else if (notesChanged) {
-    // refresh current note (unless user is mid-edit) + TOC markers
-    if (document.activeElement !== els.noteArea) els.noteArea.value = state.notes[current().id] || "";
-    highlightToc();
-  }
-  if (localChanged) schedulePush();
+  saveLocal(false);
+  renderMeta();
+  highlightToc();
+  if (state.index !== prevIndex || state.version !== prevVersion) loadPassages();
 }
 
 async function initFirebase() {
@@ -424,8 +413,10 @@ async function startCloud() {
       // one-time pull + live subscribe
       try {
         const snap = await fb.getDoc(fb.ref(fb.db, "progress", u.uid));
+        const remoteUpdated = snap.exists() ? (snap.data().updated || 0) : -1;
         if (snap.exists()) mergeRemote(snap.data());
-        else pushCloud();
+        // If our local copy is newer (or remote is empty), publish it now.
+        if ((state.updated || 0) > remoteUpdated) pushCloud();
       } catch (e) { console.warn(e); }
       if (unsub) unsub();
       unsub = fb.onSnapshot(fb.ref(fb.db, "progress", u.uid), (s) => { if (s.exists()) mergeRemote(s.data()); });
