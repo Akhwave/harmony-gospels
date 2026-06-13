@@ -1,6 +1,6 @@
 /* Service worker — app-shell offline cache.
    Bump CACHE when you change app shell files. */
-const CACHE = "hog-v5";
+const CACHE = "hog-v6";
 const SHELL = [
   "./", "./index.html", "./styles.css", "./app.js", "./data.js",
   "./firebase-config.js", "./manifest.webmanifest",

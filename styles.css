@@ -285,11 +285,6 @@ a.v:hover, a.v:focus-visible {
   color: var(--gold-lit); outline: none;
   text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 2px;
 }
-.passage-text .verse:first-child .vfirst {
-  float: left; font-family: var(--ff-display); font-weight: 600;
-  font-size: 3.1em; line-height: .76; color: var(--oxblood);
-  margin: .06em .14em 0 0; padding: 0;
-}
 
 /* skeleton loading */
 .passage-card.is-loading { animation: none; opacity: 1; transform: none; }
