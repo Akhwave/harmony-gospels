@@ -183,16 +183,32 @@ async function loadPassages() {
   }
 }
 
+// Greek interlinear on BibleHub. NT books in this harmony map to simple slugs
+// (matthew, mark, luke, john, acts); the slug rule also handles any others.
+function interlinearUrl(bookName, chapter, verse) {
+  const slug = String(bookName || "").trim().toLowerCase().replace(/\s+/g, "_");
+  if (!slug || !chapter) return "https://biblehub.com/interlinear/";
+  return `https://biblehub.com/interlinear/${slug}/${chapter}${verse ? "-" + verse : ""}.htm`;
+}
+
 function renderCard(data, ref, withDropCap) {
-  const head = `<div class="passage-ref">${escapeHtml(data.reference || ref)}</div>`;
+  const v0 = data.verses[0] || {};
+  const chapUrl = interlinearUrl(v0.book_name, v0.chapter, null);
+  const head = `<div class="passage-ref">` +
+    `<span class="passage-ref__txt">${escapeHtml(data.reference || ref)}</span>` +
+    `<span class="passage-ref__rule"></span>` +
+    `<a class="interlinear-link" href="${chapUrl}" target="_blank" rel="noopener" title="Greek interlinear for this chapter (BibleHub)">Interlinear &#8599;</a>` +
+    `</div>`;
   const verses = data.verses.map((v, idx) => {
     const text = (v.text || "").trim();
+    const url = interlinearUrl(v.book_name, v.chapter, v.verse);
+    const vnum = `<a class="v" href="${url}" target="_blank" rel="noopener" title="Greek interlinear — ${escapeHtml((v.book_name || "") + " " + v.chapter + ":" + v.verse)}">${v.chapter}:${v.verse}</a>`;
     if (withDropCap && idx === 0 && text) {
       const first = text[0];
       const rest = text.slice(1);
-      return `<span class="verse"><span class="v">${v.chapter}:${v.verse}</span><span class="vfirst">${escapeHtml(first)}</span>${escapeHtml(rest)} </span>`;
+      return `<span class="verse">${vnum}<span class="vfirst">${escapeHtml(first)}</span>${escapeHtml(rest)} </span>`;
     }
-    return `<span class="verse"><span class="v">${v.chapter}:${v.verse}</span>${escapeHtml(text)} </span>`;
+    return `<span class="verse">${vnum}${escapeHtml(text)} </span>`;
   }).join("");
   return head + `<div class="passage-text">${verses}</div>`;
 }
