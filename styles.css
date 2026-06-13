@@ -330,12 +330,10 @@ body[data-theme="dark"] .notes__status.is-saved { color: #6cc795; }
 
 /* ===================== CONTROLS ===================== */
 .controls {
-  position: sticky; bottom: 0; z-index: 20;
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
   max-width: var(--readw); margin: clamp(26px,5vw,44px) auto 0;
-  padding: 12px; margin-bottom: 8px;
-  background: color-mix(in srgb, var(--paper) 86%, transparent);
-  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  padding: 12px;
+  background: var(--paper);
   border: 1px solid var(--rule); border-radius: 999px;
   box-shadow: var(--shadow);
 }
